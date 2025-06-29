@@ -21,6 +21,22 @@ find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(pcl_ros REQUIRED)
 
+find_package(PkgConfig QUIET)
+pkg_check_modules(PC_ZeroMQ QUIET zmq)
+# If pkg-config isn't available or doesn't find it, try finding manually
+if(NOT PC_ZeroMQ_FOUND)
+    find_path(ZeroMQ_INCLUDE_DIR NAMES zmq.hpp)
+    find_library(ZeroMQ_LIBRARY NAMES zmq)
+else()
+    set(ZeroMQ_INCLUDE_DIR ${PC_ZeroMQ_INCLUDE_DIRS})
+    set(ZeroMQ_LIBRARY ${PC_ZeroMQ_LIBRARIES})
+endif()
+
+if(NOT ZeroMQ_INCLUDE_DIR OR NOT ZeroMQ_LIBRARY)
+    message(FATAL_ERROR "Could not find ZeroMQ. Please install it or set ZeroMQ_INCLUDE_DIR and ZeroMQ_LIBRARY.")
+endif()
+
+
 find_package(PCL REQUIRED)
 find_package( Eigen3 REQUIRED )
 find_package(Threads REQUIRED)
@@ -37,7 +53,7 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 rosidl_generate_interfaces(
     ${PROJECT_NAME}
         srv/SavePCD.srv
-    DEPENDENCIES       
+    DEPENDENCIES
 )
 rosidl_get_typesupport_target(cpp_typesupport_target
   ${PROJECT_NAME} rosidl_typesupport_cpp)
@@ -65,7 +81,7 @@ ament_target_dependencies(nano_gicp)
 
 # Odometry Node
 add_executable(dlio_odom_node src/dlio/odom_node.cc src/dlio/odom.cc)
-target_link_libraries(dlio_odom_node ${PCL_LIBRARIES} ${OpenMP_LIBS} Threads::Threads nano_gicp)
+target_link_libraries(dlio_odom_node zmq ${PCL_LIBRARIES} ${OpenMP_LIBS} Threads::Threads nano_gicp)
 ament_target_dependencies(dlio_odom_node "tf2_ros" "pcl_ros" "nav_msgs" "pcl_conversions" "rclcpp" "sensor_msgs" "geometry_msgs")
 
 # Mapping Node
@@ -80,10 +96,10 @@ ament_package()
 
 # Binaries
 install( TARGETS dlio_odom_node dlio_map_node
-         DESTINATION lib/${PROJECT_NAME} 
+         DESTINATION lib/${PROJECT_NAME}
 )
 install( DIRECTORY cfg launch
-         DESTINATION share/${PROJECT_NAME} 
+         DESTINATION share/${PROJECT_NAME}
 )
 
 add_compile_options(-std=c++14)
