@@ -1,6 +1,5 @@
 import zmq
-
-#zmq_odom_publisher_.bind("tcp://*:5556");
+from zmq_odom_msg import parse_odom_msg
 
 #  Socket to talk to server
 context = zmq.Context()
@@ -16,8 +15,5 @@ print("Connected!")
 total_temp = 0
 for update_nbr in range(100):
     string = socket.recv_string()
-    x, y, z = string.split()
-    print(f"update {update_nbr}")
-    print(f"{x=}, {y=}, {z=}")
-
-
+    msg = parse_odom_msg(string)
+    print(msg)

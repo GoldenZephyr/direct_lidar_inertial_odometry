@@ -13,6 +13,7 @@
 #include "dlio/odom.h"
 #include "dlio/utils.h"
 
+#include <nlohmann/json.hpp>
 #include <queue>
 #include <zmq.hpp>
 
@@ -385,9 +386,34 @@ void dlio::OdomNode::start() {
 }
 
 void dlio::OdomNode::zmqPublishPose() {
-  RCLCPP_WARN(get_logger(), "zmqPublishPose!");
-  std::string data = "0 1 2";
-  zmq::message_t message(data);
+  // RCLCPP_WARN(get_logger(), "zmqPublishPose!");
+  nlohmann::json msg;
+
+  rclcpp::Time stamp_time(imu_stamp);
+  int64_t stamp_nanoseconds = stamp_time.nanoseconds();
+
+  msg["epoch_ns"] = stamp_nanoseconds;
+
+  msg["x"] = state.p[0];
+  msg["y"] = state.p[1];
+  msg["z"] = state.p[2];
+
+  msg["vx"] = state.v.lin.w[0];
+  msg["vy"] = state.v.lin.w[1];
+  msg["vz"] = state.v.lin.w[2];
+
+  msg["qx"] = state.q.x();
+  msg["qy"] = state.q.y();
+  msg["qz"] = state.q.z();
+  msg["qw"] = state.q.w();
+
+  msg["omegax"] = state.v.ang.b[0];
+  msg["omegay"] = state.v.ang.b[1];
+  msg["omegaz"] = state.v.ang.b[2];
+
+  // Convert JSON object to string
+  std::string json_str = msg.dump(4);
+  zmq::message_t message(json_str);
   zmq_odom_publisher_.send(message, zmq::send_flags::none);
 }
 void dlio::OdomNode::publishPose() {
