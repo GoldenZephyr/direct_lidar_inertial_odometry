@@ -19,6 +19,37 @@
 
 #include "rclcpp/qos.hpp"
 
+
+
+double Filter::update(double new_input) {
+
+    for (size_t i = 0; i < N_INPUT_WEIGHTS-1; ++i) {
+        input_history_[i] = input_history_[i + 1];
+    }
+    input_history_[N_INPUT_WEIGHTS-1] = new_input;
+
+
+    double acc = 0;
+    for (size_t i = 0; i < N_INPUT_WEIGHTS; ++i) {
+        acc += input_weights_[i] * input_history_[i];
+    }
+    for (size_t i = 0; i < N_INPUT_WEIGHTS-1; ++i) {
+        acc += output_weights_[i] * output_history_[i];
+    }
+
+    double new_output = acc / final_filter_coeff_;
+    for (size_t i = 0; i < N_INPUT_WEIGHTS-2; ++i) {
+        output_history_[i] = output_history_[i + 1];
+    }
+    output_history_[N_INPUT_WEIGHTS-2] = new_output;
+    return new_output;
+}
+
+double Filter::get_current_output() {
+    return output_history_[N_INPUT_WEIGHTS-2];
+}
+
+
 dlio::OdomNode::OdomNode()
     : Node("dlio_odom_node"), zmq_context_(1),
       zmq_odom_publisher_(zmq_context_, ZMQ_PUB) {
@@ -1503,8 +1534,11 @@ void dlio::OdomNode::propagateState() {
   Eigen::Quaternionf qhat = this->state.q, omega;
   Eigen::Vector3f world_accel;
 
+  auto filtered_ax = ax_filter_.update(imu_meas.lin_accel(0));
+  auto filtered_ay = ay_filter_.update(imu_meas.lin_accel(1));
+  auto filtered_az = az_filter_.update(imu_meas.lin_accel(2));
   // Transform accel from body to world frame
-  world_accel = qhat._transformVector(this->imu_meas.lin_accel);
+  world_accel = qhat._transformVector({filtered_ax, filtered_ay, filtered_az});
 
   // Accel propogation
   this->state.p[0] +=

@@ -40,6 +40,25 @@
 
 #include <zmq.hpp>
 
+constexpr size_t N_INPUT_WEIGHTS = 5;
+
+class Filter {
+  // 4th order butterworth, 200Hz data, 5Hz 3dB cutoff
+
+  double input_history_[N_INPUT_WEIGHTS] = {0};
+  double output_history_[N_INPUT_WEIGHTS - 1] = {0};
+
+  // oldest to most recent point
+  double input_weights_[N_INPUT_WEIGHTS] = {1, 4, 6, 4, 1};
+  double output_weights_[N_INPUT_WEIGHTS - 1] = {-21223.822, 93602.702,
+                                                 -155296.607, 114912.018};
+  double final_filter_coeff_ = 32011.292;
+
+public:
+  double update(double new_input);
+  double get_current_output();
+};
+
 class dlio::OdomNode : public rclcpp::Node {
 
 public:
@@ -266,6 +285,10 @@ private:
     Eigen::Vector3f lin_accel;
   };
   ImuMeas imu_meas;
+
+  Filter ax_filter_;
+  Filter ay_filter_;
+  Filter az_filter_;
 
   boost::circular_buffer<ImuMeas> imu_buffer;
   std::mutex mtx_imu;
