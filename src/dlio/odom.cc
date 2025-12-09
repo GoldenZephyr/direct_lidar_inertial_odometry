@@ -1537,14 +1537,28 @@ void dlio::OdomNode::propagateState() {
 
   double dt = this->imu_meas.dt;
 
+  geometry_msgs::msg::Point raw_acc;
+  raw_acc.x = imu_meas.lin_accel(0);
+  raw_acc.y = imu_meas.lin_accel(1);
+  raw_acc.z = imu_meas.lin_accel(2);
+
+  raw_imu_pub_->publish(raw_acc);
   Eigen::Quaternionf qhat = this->state.q, omega;
   Eigen::Vector3f world_accel;
 
   auto filtered_ax = ax_filter_.update(imu_meas.lin_accel(0));
   auto filtered_ay = ay_filter_.update(imu_meas.lin_accel(1));
   auto filtered_az = az_filter_.update(imu_meas.lin_accel(2));
+
+  geometry_msgs::msg::Point filtered_acc;
+  filtered_acc.x = filtered_ax;
+  filtered_acc.y = filtered_ay;
+  filtered_acc.z = filtered_az;
+  filtered_imu_pub_->publish(filtered_acc);
+
   // Transform accel from body to world frame
   world_accel = qhat._transformVector({filtered_ax, filtered_ay, filtered_az});
+
 
   // Accel propogation
   this->state.p[0] +=
