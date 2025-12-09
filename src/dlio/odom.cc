@@ -88,6 +88,12 @@ dlio::OdomNode::OdomNode()
       std::bind(&dlio::OdomNode::callbackImu, this, std::placeholders::_1),
       imu_sub_opt);
 
+  abias_pub_ = create_publisher<geometry_msgs::msg::Point>("abias", 1);
+  vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("twist_est", 1);
+  pos_error_pub_ = create_publisher<geometry_msgs::msg::Point>("position_error", 1);
+  position_pub_ = create_publisher<geometry_msgs::msg::Point>("position", 1);
+  vel_propagate_pub_ = create_publisher<geometry_msgs::msg::Point>("vel_propagate", 1);
+
   this->odom_pub = this->create_publisher<nav_msgs::msg::Odometry>("odom", 1);
   this->pose_pub =
       this->create_publisher<geometry_msgs::msg::PoseStamped>("pose", 1);
@@ -1573,6 +1579,15 @@ void dlio::OdomNode::updateState() {
   // Lock thread to prevent state from being accessed by PropagateState
   std::lock_guard<std::mutex> lock(this->geo.mtx);
 
+
+  auto prev_propagated_vel = state.v.lin.w - geo.prev_vel;
+
+  geometry_msgs::msg::Point vel_propagate;
+  vel_propagate.x = prev_propagated_vel(0);
+  vel_propagate.y = prev_propagated_vel(1);
+  vel_propagate.z = prev_propagated_vel(2);
+  vel_propagate_pub_->publish(vel_propagate);
+
   Eigen::Vector3f pin = this->lidarPose.p;
   Eigen::Quaternionf qin = this->lidarPose.q;
   double dt = this->scan_stamp - this->prev_scan_stamp;
@@ -1627,6 +1642,31 @@ void dlio::OdomNode::updateState() {
   this->geo.prev_p = this->state.p;
   this->geo.prev_q = this->state.q;
   this->geo.prev_vel = this->state.v.lin.w;
+
+  geometry_msgs::msg::Point abias;
+  abias.x = state.b.accel(0);
+  abias.y = state.b.accel(1);
+  abias.z = state.b.accel(2);
+
+  abias_pub_->publish(abias);
+
+  geometry_msgs::msg::Twist twist_est;
+  twist_est.linear.x = state.v.lin.w(0);
+  twist_est.linear.y = state.v.lin.w(1);
+  twist_est.linear.z = state.v.lin.w(2);
+  vel_pub_->publish(twist_est);
+
+  geometry_msgs::msg::Point pos_err;
+  pos_err.x = err(0);
+  pos_err.y = err(1);
+  pos_err.z = err(2);
+  pos_error_pub_->publish(pos_err);
+
+  geometry_msgs::msg::Point position;
+  position.x = state.p(0);
+  position.y = state.p(1);
+  position.z = state.p(2);
+  position_pub_->publish(position);
 }
 
 sensor_msgs::msg::Imu::SharedPtr

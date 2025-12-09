@@ -16,6 +16,8 @@
 #include "rclcpp/rclcpp.hpp"
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/point.hpp>
+#include <geometry_msgs/msg/twist.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/path.hpp>
 #include <sensor_msgs/msg/imu.hpp>
@@ -152,6 +154,12 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr kf_pose_pub;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr kf_cloud_pub;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr deskewed_pub;
+
+  rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr abias_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr vel_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr pos_error_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr position_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr vel_propagate_pub_;
 
   zmq::context_t zmq_context_;
   zmq::socket_t zmq_odom_publisher_;
